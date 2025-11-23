@@ -1,26 +1,21 @@
 # Use an official Node.js runtime as a parent image
-FROM node:18-alpine
+FROM node:18-slim
 
 # Set the working directory in the container
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json (or yarn.lock)
+# Copy the top-level package.json and install server dependencies
 COPY package*.json ./
-
-# Install project dependencies
 RUN npm install
 
-# Copy the rest of your app's source code from your host to your image filesystem.
+# Copy the rest of the app source code
 COPY . .
 
-# Build the React app for production
-RUN npm run build
-
-# Use a lightweight web server to serve the static files
-RUN npm install -g serve
+# The `postinstall` script in package.json will automatically
+# change to the /client directory, install its dependencies, and build the React app.
 
 # The space will be available at port 7860
 EXPOSE 7860
 
-# Command to run the app
-CMD ["serve", "-s", "build", "-l", "7860"]
+# Command to run the Node.js server
+CMD [ "npm", "start" ]
