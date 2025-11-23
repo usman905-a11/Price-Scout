@@ -3,6 +3,7 @@ import SearchHeader from './components/SearchHeader';
 import ComparisonTable from './components/ComparisonTable';
 import TopDealsSection from './components/BestDealCard';
 import AnalysisView from './components/AnalysisView';
+import { searchAndCompareProducts } from './services/geminiService';
 import { SearchState } from './types';
 import { Search, AlertTriangle, DollarSign, Clock, Zap, MapPin, Sparkles } from 'lucide-react';
 
@@ -17,28 +18,7 @@ function App() {
   const handleSearch = async (query: string, location?: string) => {
     setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      // This is the new secure way to call your backend
-      const fullPrompt = `You are PriceScout, an expert price comparison shopping agent. Your goal is to find the absolute best, real-time deal for a given product.
-      Product to search: "${query}"
-      ${location ? `User's location for shipping calculation: "${location}"` : ''}
-      
-      Perform the following steps:
-      1.  Identify the exact product model, configuration, and key specifications.
-      2.  Search the top 5-10 most relevant online retailers for this product (e.g., Amazon, Best Buy, Walmart, B&H Photo, official brand store, etc.).
-      3.  For each listing, find the price, shipping cost, and stock status. Calculate the total price (price + shipping).
-      4.  Format the response as a single JSON object. Do not include any text or markdown formatting before or after the JSON.
-      
-      The JSON object must have the following structure:
-      {
-        "productName": "string",
-        "overview": "string (A brief 1-2 sentence summary of the findings)",
-        "topDeals": [{ "retailer": "string", "totalPrice": "number", "dealType": "string (e.g., 'Best Overall', 'Fastest Shipping')" }],
-        "listings": [{ "retailer": "string", "price": "number", "shipping": "string", "totalPrice": "number", "stock": "string", "url": "string" }],
-        "analysis": { "summary": "string", "pros": ["string"], "cons": ["string"] },
-        "alternatives": [{ "name": "string", "reason": "string" }]
-      }`;
-
-      const { data, sources } = await searchAndCompareProducts(fullPrompt);
+      const { data, sources } = await searchAndCompareProducts(query, location);
       setSearchState({
         isLoading: false,
         error: null,
@@ -53,36 +33,6 @@ function App() {
         sources: []
       });
     }
-  };
-
-  // This function now calls your own backend server
-  const searchAndCompareProducts = async (prompt: string) => {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("Backend Error:", errorBody);
-      throw new Error('Failed to fetch data from the backend.');
-    }
-
-    const text = (await response.json()).response;
-
-    // Find the JSON part of the response
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*})/);
-    if (!jsonMatch) {
-      console.error("Invalid JSON response from AI:", text);
-      throw new Error("The AI returned data in an unexpected format.");
-    }
-    
-    // Use the first captured group that is not null
-    const jsonData = JSON.parse(jsonMatch[1] || jsonMatch[2]);
-    return { data: jsonData, sources: jsonData.listings.map((l: any) => l.retailer) };
   };
 
   return (
